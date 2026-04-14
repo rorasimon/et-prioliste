@@ -165,6 +165,10 @@ td.mono{font-family:var(--mono);font-size:13px}
       <button class="chip" onclick="setFilter('Drehen',this)">Drehen</button>
       <button class="chip" onclick="setFilter('Fräsen',this)">Fräsen</button>
       <button class="chip" onclick="setFilter('p1',this)">Nur Prio 1</button>
+      <span style="width:1px;height:20px;background:var(--border);margin:0 4px"></span>
+      <button class="chip" onclick="setStatusFilter('Angekündigt',this)">Angekündigt</button>
+      <button class="chip" onclick="setStatusFilter('Bauteil in QS',this)">In QS</button>
+      <button class="chip" onclick="setStatusFilter('Händische Messung',this)">Händisch</button>
       <span class="filter-sep"></span>
       <span class="count-label" id="count-label">–</span>
       <button class="btn-new" onclick="openModal()">
@@ -211,7 +215,7 @@ td.mono{font-family:var(--mono);font-size:13px}
       <div class="form-group"><label>Bauteilbezeichnung</label><input type="text" id="f-bez" placeholder="z.B. ROD END"></div>
       <div class="form-group"><label>Maschinennummer *</label><input type="text" id="f-machine" placeholder="1037"></div>
       <div class="form-group"><label>Fertigungsbereich *</label>
-        <select id="f-bereich"><option value="">Auswählen...</option><option>Dreherei</option><option>Fräserei</option><option>Sonstige</option></select>
+        <select id="f-bereich"><option value="">Auswählen...</option><option>Fräsen</option><option>Drehen</option><option>Sonstige</option></select>
       </div>
       <div class="form-group"><label>Priorität *</label>
         <select id="f-prio"><option value="1">Prio 1 – Höchste</option><option value="2" selected>Prio 2</option><option value="3">Prio 3 – Niedrig</option></select>
@@ -251,7 +255,7 @@ const DONE=['Freigegeben','Rückgewiesen'];
 const msalConfig={auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:window.location.href.split('?')[0]},cache:{cacheLocation:'sessionStorage'}};
 const msalInstance=new msal.PublicClientApplication(msalConfig);
 const scopes=['https://roraaviation.sharepoint.com/AllSites.Write'];
-let allParts=[],currentFilter='alle',selectedId=null,_listType=null;
+let allParts=[],currentFilter='alle',statusFilter='alle',selectedId=null,_listType=null;
 
 async function init(){
   await msalInstance.initialize();
@@ -301,10 +305,10 @@ function fmtDT(iso){if(!iso)return'–';const d=new Date(iso);return`${String(d.
 function durMin(a,b){if(!a||!b)return null;return Math.round((new Date(b)-new Date(a))/60000);}
 function durStr(m){if(m===null)return'–';if(m<60)return`${m} min`;return`${Math.floor(m/60)}h ${m%60}m`;}
 function sCss(s){return STATUS_FLOW[s]?.css||'s-angek';}
-function bCss(b){if(b==='Drehen')return'b-drehen';if(b==='Fräsen')return'b-fraesen';return'';}
+function bCss(b){if(b==='Drehen'||b==='Dreherei')return'b-drehen';if(b==='Fräsen'||b==='Fräserei')return'b-fraesen';return'';}
 
 function renderList(){
-  const parts=allParts.filter(p=>!DONE.includes(p.status)).filter(p=>{if(currentFilter==='Drehen')return p.bereich==='Drehen';if(currentFilter==='Fräsen')return p.bereich==='Fräsen';if(currentFilter==='p1')return p.prio==1;return true;}).sort((a,b)=>{ const rd=a.reihenfolge-b.reihenfolge; return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich); });
+  const parts=allParts.filter(p=>!DONE.includes(p.status)).filter(p=>{if(currentFilter==='Drehen')return p.bereich==='Drehen';if(currentFilter==='Fräsen')return p.bereich==='Fräsen';if(currentFilter==='p1')return p.prio==1;return true;}).filter(p=>{if(statusFilter!=='alle')return p.status===statusFilter;return true;}).sort((a,b)=>{ const rd=a.reihenfolge-b.reihenfolge; return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich); });
   document.getElementById('count-label').textContent=`${parts.length} Teile offen`;
   document.getElementById('badge-offen').textContent=allParts.filter(p=>!DONE.includes(p.status)).length;
   document.getElementById('parts-tbody').innerHTML=parts.map(p=>`<tr draggable="true" ondragstart="dragStart(event,${p.id})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,${p.id})" onclick="selectPart(${p.id})" class="${selectedId===p.id?'selected':''}" style="cursor:grab">
@@ -431,7 +435,8 @@ function renderArchiv(){
   document.getElementById('archiv-container').style.display='block';
 }
 function showTab(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');document.getElementById('tab-'+id).classList.add('active');if(id==='archiv')renderArchiv();}
-function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');selectedId=null;renderList();}
+function setStatusFilter(s,btn){statusFilter=s;document.querySelectorAll('.chip').forEach(c=>{if(['Angekündigt','Bauteil in QS','Händische Messung'].some(x=>c.textContent.includes(x.split(' ')[0])))c.classList.remove('active')});btn.classList.add('active');selectedId=null;renderList();}
+function setFilter(f,btn){if(statusFilter!=='alle'){statusFilter='alle';document.querySelectorAll('.chip').forEach(c=>{if(['Angekündigt','In QS','Händisch'].includes(c.textContent.trim()))c.classList.remove('active')});}currentFilter=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');selectedId=null;renderList();}
 let toastTimer;
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
 

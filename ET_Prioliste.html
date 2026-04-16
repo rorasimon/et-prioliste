@@ -549,64 +549,83 @@ function renderDetail(){
   if(!p){cont.innerHTML='';return;}
   const dur=durMin(p.ts_qs,p.ts_abg);
   const next=STATUS_FLOW[p.status]?.next||[];
-  cont.innerHTML=`<div class="detail-panel">
-    <div class="detail-header">
-      <span class="prio-badge prio-${p.prio}" style="width:30px;height:30px;font-size:14px">${p.prio}</span>
-      <div><div class="detail-nr">${p.nr}</div><div class="detail-bez">${p.bez} · Maschine ${p.machine} · ${p.bereich}</div></div>
-      <div class="detail-meta"><span class="status-badge ${sCss(p.status)}">${p.status}</span><button onclick="selectPart(${p.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:4px 6px;border-radius:4px;margin-left:4px" title="Schließen">✕</button></div>
-    </div>
-    <div class="time-flow">
-      <div class="time-step"><div class="time-step-label">Geplante Ankunft</div><div class="time-step-val ${p.geplant?'set':''}">${fmtTime(p.geplant)}</div></div>
-      <span class="time-arrow">›</span>
-      <div class="time-step"><div class="time-step-label">Angekündigt</div><div class="time-step-val ${p.ts_angek?'set':''}">${fmtTime(p.ts_angek)}</div></div>
-      <span class="time-arrow">›</span>
-      <div class="time-step"><div class="time-step-label">Bauteil in QS</div><div class="time-step-val ${p.ts_qs?'set':''}">${fmtTime(p.ts_qs)}</div></div>
-      <span class="time-arrow">›</span>
-      <div class="time-step"><div class="time-step-label">Händische Messung</div><div class="time-step-val ${p.ts_haend?'set':''}">${fmtTime(p.ts_haend)}</div></div>
-      <span class="time-arrow">›</span>
-      <div class="time-step"><div class="time-step-label">Abgeschlossen</div><div class="time-step-val ${p.ts_abg?'set':''}">${fmtTime(p.ts_abg)}</div></div>
-      ${dur!==null?`<div class="time-duration"><div class="time-duration-label">Gesamtdauer</div><div class="time-duration-val">${durStr(dur)}</div></div>`:''}
-    </div>
-    <div class="detail-grid">
-      <div class="detail-field"><label>Maschinennummer</label><span>${p.machine}</span></div>
-      <div class="detail-field"><label>Fertigungsbereich</label><span>${p.bereich}</span></div>
-      ${p.notiz&&p.notiz.includes("⚠")?`<div class="detail-field" style="grid-column:1/-1"><label>Notiz</label><div style="background:var(--p1lt);border:1px solid var(--p1);border-radius:var(--radius);padding:10px 14px;color:var(--p1);font-size:14px">${p.notiz}</div></div>`:p.notiz?`<div class="detail-field"><label>Notiz</label><span style="font-weight:400">${p.notiz}</span></div>`:''}
-      ${p.rueck?`<div class="detail-field"><label>Rückweisungsgrund</label><span style="color:var(--p1);font-weight:400">${p.rueck}</span></div>`:''}
-    </div>
-    <details style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <summary style="padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);background:var(--bg2);list-style:none;display:flex;align-items:center;gap:6px">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Verlauf & Details
-      </summary>
-      <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="detail-field"><label>Angelegt von</label><span style="font-weight:400">${p.angelegtVon||'–'}</span></div>
-        <div class="detail-field"><label>Zuletzt geändert von</label><span style="font-weight:400">${p.geaendertVon||'–'}</span></div>
-        <div class="detail-field"><label>Letzte Änderung</label><span style="font-weight:400">${p.letzteAenderung||'–'}</span></div>
-        <div class="detail-field"><label>Angekündigt</label><span style="font-weight:400">${fmtTime(p.ts_angek)||'–'}</span></div>
+  const hasWarning=p.notiz&&p.notiz.includes('⚠');
+
+  // Time steps - only show set ones + next one
+  const steps=[
+    {label:'Geplant',val:p.geplant,key:'geplant'},
+    {label:'Angekündigt',val:p.ts_angek,key:'ts_angek'},
+    {label:'In QS',val:p.ts_qs,key:'ts_qs'},
+    {label:'Händisch',val:p.ts_haend,key:'ts_haend'},
+    {label:'Abgeschlossen',val:p.ts_abg,key:'ts_abg'},
+  ];
+
+  cont.innerHTML=`<div class="detail-panel" style="margin-top:8px">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <span class="prio-badge prio-${p.prio}" style="width:30px;height:30px;font-size:14px;flex-shrink:0">${p.prio}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-family:var(--mono);font-size:17px;font-weight:700">${p.nr}</span>
+          <span style="font-size:13px;color:var(--text2)">${p.bez}</span>
+          <span class="status-badge ${sCss(p.status)}" style="margin-left:auto">${p.status}</span>
+          <button onclick="selectPart(${p.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 6px;border-radius:4px">✕</button>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">
+          Maschine <strong style="color:var(--text2)">${p.machine}</strong>
+          &nbsp;·&nbsp; ${p.bereich}
+          ${p.geplant?'&nbsp;·&nbsp; Geplante Ankunft <strong style="color:var(--accent)">'+fmtTime(p.geplant)+'</strong>':''}
+        </div>
       </div>
-    </details>
-    ${next.length>0?`<div class="action-row" style="flex-direction:column;gap:12px">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--text3);min-width:90px">Nächster Status:</span>
-        ${next.filter(s=>s!=='Freigegeben'&&s!=='Rückgewiesen').map(s=>`<button class="btn btn-primary" onclick="advanceStatus(${p.id},'${s}')">${s} →</button>`).join('')}
-        ${canAdmin()?`<button class="btn btn-sm" onclick="editPrio(${p.id})" style="margin-left:auto">Prio ändern</button>`:''}
-      </div>
-      ${next.some(s=>s==='Freigegeben'||s==='Rückgewiesen')?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:10px;border-top:1px dashed var(--border)">
-        <span style="font-size:12px;color:var(--text3);min-width:90px">Abschluss:</span>
-        ${next.filter(s=>s==='Freigegeben'||s==='Rückgewiesen').map(s=>`<button class="btn ${s==='Freigegeben'?'btn-success':'btn-danger'}" onclick="advanceStatus(${p.id},'${s}')">${s} →</button>`).join('')}
+    </div>
+
+    <!-- Zeitstrahl kompakt -->
+    <div style="display:flex;align-items:center;gap:4px;padding:10px 14px;background:var(--bg2);border-radius:var(--radius);margin-bottom:12px;flex-wrap:wrap">
+      ${steps.filter(s=>s.key!=='geplant').map((s,i,arr)=>`
+        <div style="text-align:center;min-width:70px">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono)">${s.label}</div>
+          <div style="font-size:13px;font-family:var(--mono);font-weight:600;margin-top:3px;color:${s.val?'var(--accent)':'var(--text3)'}">${s.val?fmtTime(s.val):'–'}</div>
+        </div>
+        ${i<arr.length-1?'<span style="color:var(--border2);font-size:14px">›</span>':''}
+      `).join('')}
+      ${dur!==null?`<div style="margin-left:auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:5px 12px;text-align:center">
+        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase">Dauer</div>
+        <div style="font-size:15px;font-weight:700;color:var(--accent);font-family:var(--mono)">${durStr(dur)}</div>
       </div>`:''}
+    </div>
+
+    ${hasWarning?`<div style="background:var(--p1lt);border:1px solid var(--p1);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--p1);margin-bottom:12px">${p.notiz}</div>`:''}
+    ${!hasWarning&&p.notiz?`<div style="font-size:13px;color:var(--text2);margin-bottom:12px;padding:0 2px">${p.notiz}</div>`:''}
+    ${p.rueck?`<div style="background:var(--p1lt);border:1px solid var(--p1);border-radius:var(--radius);padding:8px 14px;font-size:13px;color:var(--p1);margin-bottom:12px"><strong>Rückweisung:</strong> ${p.rueck}</div>`:''}
+
+    <!-- Aktionen -->
+    ${next.length>0?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)">
+      ${next.filter(s=>s!=='Freigegeben'&&s!=='Rückgewiesen').map(s=>`<button class="btn btn-primary" onclick="advanceStatus(${p.id},'${s}')">${s} →</button>`).join('')}
+      ${next.filter(s=>s==='Freigegeben'||s==='Rückgewiesen').map(s=>`<button class="btn ${s==='Freigegeben'?'btn-success':'btn-danger'}" onclick="advanceStatus(${p.id},'${s}')">${s} →</button>`).join('')}
+      ${canAdmin()?`<button class="btn btn-sm" onclick="editPrio(${p.id})" style="margin-left:auto;color:var(--text3)">Prio ändern</button>`:''}
     </div>
     <div class="rueck-section" id="rueck-section">
       <label>Rückweisungsgrund *</label>
       <textarea id="rueck-input" placeholder="Grund für Rückweisung..."></textarea>
-      <div style="margin-top:10px;display:flex;gap:8px">
+      <div style="margin-top:8px;display:flex;gap:8px">
         <button class="btn btn-danger btn-sm" onclick="confirmRueck(${p.id})">Bestätigen</button>
         <button class="btn btn-sm" onclick="document.getElementById('rueck-section').style.display='none'">Abbrechen</button>
       </div>
-    </div>`:`<div style="padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:13px;color:var(--text3)">${p.status === 'Freigegeben' ? '✓ Freigegeben' : '✗ Rückgewiesen'}</span>
-      ${p.status==='Rückgewiesen'?`<button class="btn btn-primary" onclick="erneutMessen(${p.id})">Erneut messen →</button>`:''}
+    </div>`:`<div style="display:flex;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--border)">
+      <span style="font-size:13px;color:${p.status==='Freigegeben'?'var(--p3)':'var(--p1)'};font-weight:600">${p.status==='Freigegeben'?'✓ Freigegeben':'✗ Rückgewiesen'}</span>
+      ${p.status==='Rückgewiesen'?`<button class="btn btn-primary btn-sm" onclick="erneutMessen(${p.id})">Erneut messen →</button>`:''}
     </div>`}
+
+    <!-- Verlauf -->
+    <details style="margin-top:10px;border-top:1px solid var(--border)">
+      <summary style="padding:8px 0;cursor:pointer;font-size:11px;font-weight:600;color:var(--text3);list-style:none;display:flex;align-items:center;gap:4px;text-transform:uppercase;letter-spacing:.5px">
+        ▸ Verlauf &amp; Details
+      </summary>
+      <div style="padding:10px 0;display:flex;gap:24px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
+        ${p.angelegtVon?`<span><strong style="color:var(--text3)">Angelegt:</strong> ${p.angelegtVon}</span>`:''}
+        ${p.geaendertVon?`<span><strong style="color:var(--text3)">Geändert:</strong> ${p.geaendertVon}</span>`:''}
+        ${p.letzteAenderung?`<span><strong style="color:var(--text3)">Letzte Änd.:</strong> ${p.letzteAenderung}</span>`:''}
+      </div>
+    </details>
   </div>`;
 }
 

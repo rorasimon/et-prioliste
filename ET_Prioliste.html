@@ -398,7 +398,7 @@ function renderList(){
     <td><span class="notiz-text">${p.notiz}</span></td>
   </tr>`).join('');
   const separatorRow=doneTodayParts.length>0?`<tr style="pointer-events:none">
-    <td colspan="8" style="padding:6px 14px;background:#f0f4f8;border-top:2px solid var(--border2)">
+    <td colspan="9" style="padding:6px 14px;background:#f0f4f8;border-top:2px solid var(--border2)">
       <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-family:var(--mono)">✓ Heute abgeschlossen – ${doneTodayParts.length} ${doneTodayParts.length===1?'Teil':'Teile'}</span>
     </td>
   </tr>`:'';

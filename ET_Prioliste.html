@@ -221,6 +221,7 @@ td.mono{font-family:var(--mono);font-size:13px}
         <button class="chip" onclick="setStatusFilter('Angekündigt',this)" id="chip-s-angek">Angekündigt</button>
         <button class="chip" onclick="setStatusFilter('Bauteil in QS',this)" id="chip-s-qs">Bauteil in QS</button>
         <button class="chip" onclick="setStatusFilter('Händische Messung',this)" id="chip-s-haend">Händische Messung</button>
+      <button class="chip" onclick="setStatusFilter('Rückgewiesen',this)" id="chip-s-rueck">Rückgewiesen</button>
       </div>
     </div>
     <div id="list-loading" class="loading"><div class="spinner"></div>Lade ET Prioliste...</div>
@@ -515,9 +516,9 @@ async function loadParts(){
       }
       if(savedStatus&&savedStatus!=='alle'){
         statusFilter=savedStatus;
-        const statusMap={'Angekündigt':'chip-s-angek','Bauteil in QS':'chip-s-qs','Händische Messung':'chip-s-haend'};
+        const statusMap={'Angekündigt':'chip-s-angek','Bauteil in QS':'chip-s-qs','Händische Messung':'chip-s-haend','Rückgewiesen':'chip-s-rueck'};
         const btnId=statusMap[savedStatus];
-        if(btnId){const btn=document.getElementById(btnId);if(btn){document.querySelectorAll('.chip').forEach(c=>{if(['chip-s-alle','chip-s-angek','chip-s-qs','chip-s-haend'].includes(c.id))c.classList.remove('active')});btn.classList.add('active');document.getElementById('chip-s-alle').classList.remove('active');}}
+        if(btnId){const btn=document.getElementById(btnId);if(btn){document.querySelectorAll('.chip').forEach(c=>{if(['chip-s-alle','chip-s-angek','chip-s-qs','chip-s-haend','chip-s-rueck'].includes(c.id))c.classList.remove('active')});btn.classList.add('active');document.getElementById('chip-s-alle').classList.remove('active');}}
       }
     }catch(e){}
     renderList();
@@ -546,8 +547,12 @@ function renderList(){
     return true;
   };
   const statusFlt=p=>statusFilter==='alle'||p.status===statusFilter;
+  const showDoneFilter=statusFilter==='Rückgewiesen'||statusFilter==='Freigegeben';
   const openParts=allParts
-    .filter(p=>!DONE.includes(p.status))
+    .filter(p=>{
+      if(showDoneFilter)return p.status===statusFilter;
+      return !DONE.includes(p.status);
+    })
     .filter(baseFilter).filter(statusFlt)
     .filter(p=>matchSearch(p,searchQuery))
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
@@ -567,7 +572,7 @@ function renderList(){
     <td><span class="status-badge ${sCss(p.status)}">${p.status}</span></td>
     <td class="mono" style="font-size:12px">${fmtGeplant(p)}</td>
     <td class="mono" style="color:var(--text2)">${fmtTime(p.ts_qs||p.ts_angek)}</td>
-    <td><span class="notiz-text">${p.notiz}</span></td>
+    <td><span class="notiz-text">${p.notiz.includes("⚠")?"<span style='color:var(--p1);font-weight:600'>⚠ Rückweisung</span> "+p.notiz.replace(/⚠[^:]+:/,""):p.notiz}</span></td>
   </tr>`).join('');
   const separatorRow=doneTodayParts.length>0?`<tr style="pointer-events:none">
     <td colspan="9" style="padding:6px 14px;background:#f0f4f8;border-top:2px solid var(--border2)">
@@ -582,7 +587,7 @@ function renderList(){
     <td><span class="status-badge ${sCss(p.status)}">${p.status}</span></td>
     <td class="mono" style="font-size:12px">–</td>
     <td class="mono" style="color:var(--text2)">${fmtTime(p.ts_abg)}</td>
-    <td><span class="notiz-text">${p.notiz}</span></td>
+    <td><span class="notiz-text">${p.notiz.includes("⚠")?"<span style='color:var(--p1);font-weight:600'>⚠ Rückweisung</span> "+p.notiz.replace(/⚠[^:]+:/,""):p.notiz}</span></td>
   </tr>`).join('');
   document.getElementById('parts-tbody').innerHTML=openRows+separatorRow+doneRows;
   renderDetail();
@@ -616,7 +621,7 @@ function renderDetail(){
     <div class="detail-grid">
       <div class="detail-field"><label>Maschinennummer</label><span>${p.machine}</span></div>
       <div class="detail-field"><label>Fertigungsbereich</label><span>${p.bereich}</span></div>
-      ${p.notiz?`<div class="detail-field"><label>Notiz</label><span style="font-weight:400">${p.notiz}</span></div>`:''}
+      ${p.notiz&&p.notiz.includes("⚠")?`<div class="detail-field" style="grid-column:1/-1"><label>Notiz</label><div style="background:var(--p1lt);border:1px solid var(--p1);border-radius:var(--radius);padding:10px 14px;color:var(--p1);font-size:14px">${p.notiz}</div></div>`:p.notiz?`<div class="detail-field"><label>Notiz</label><span style="font-weight:400">${p.notiz}</span></div>`:''}
       ${p.rueck?`<div class="detail-field"><label>Rückweisungsgrund</label><span style="color:var(--p1);font-weight:400">${p.rueck}</span></div>`:''}
     </div>
     ${next.length>0?`<div class="action-row" style="flex-direction:column;gap:12px">
@@ -732,7 +737,7 @@ function renderArchiv(){
   document.getElementById('archiv-container').style.display='block';
 }
 function showTab(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');document.getElementById('tab-'+id).classList.add('active');if(id==='archiv')renderArchiv();}
-function setStatusFilter(s,btn){try{localStorage.setItem('et_status',s);}catch(e){}statusFilter=s;['chip-s-alle','chip-s-angek','chip-s-qs','chip-s-haend'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active')});btn.classList.add('active');selectedId=null;renderList();}
+function setStatusFilter(s,btn){try{localStorage.setItem('et_status',s);}catch(e){}statusFilter=s;['chip-s-alle','chip-s-angek','chip-s-qs','chip-s-haend','chip-s-rueck'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active')});btn.classList.add('active');selectedId=null;renderList();}
 function setFilter(f,btn){try{localStorage.setItem('et_bereich',f);}catch(e){}currentFilter=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');selectedId=null;renderList();}
 let toastTimer;
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
@@ -753,8 +758,12 @@ async function dropOn(e,targetId){
     return true;
   };
   const statusFlt=p=>statusFilter==='alle'||p.status===statusFilter;
+  const showDoneFilter=statusFilter==='Rückgewiesen'||statusFilter==='Freigegeben';
   const openParts=allParts
-    .filter(p=>!DONE.includes(p.status))
+    .filter(p=>{
+      if(showDoneFilter)return p.status===statusFilter;
+      return !DONE.includes(p.status);
+    })
     .filter(baseFilter).filter(statusFlt)
     .filter(p=>matchSearch(p,searchQuery))
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});

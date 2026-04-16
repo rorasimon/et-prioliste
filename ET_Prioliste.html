@@ -196,7 +196,7 @@ td.mono{font-family:var(--mono);font-size:13px}
     <div class="stats-row">
       <div class="stat-card"><div class="stat-label">Freigegeben</div><div class="stat-val blue" id="stat-frei">–</div></div>
       <div class="stat-card"><div class="stat-label">Rückgewiesen</div><div class="stat-val red" id="stat-rueck">–</div></div>
-      <div class="stat-card"><div class="stat-label">Ø Dauer</div><div class="stat-val" id="stat-dauer">–</div></div>
+
     </div>
     <div id="archiv-loading" class="loading"><div class="spinner"></div>Lade Archiv...</div>
     <div id="archiv-container" style="display:none">
@@ -399,7 +399,7 @@ function renderDetail(){
     <div class="detail-header">
       <span class="prio-badge prio-${p.prio}" style="width:30px;height:30px;font-size:14px">${p.prio}</span>
       <div><div class="detail-nr">${p.nr}</div><div class="detail-bez">${p.bez} · Maschine ${p.machine} · ${p.bereich}</div></div>
-      <div class="detail-meta"><span class="status-badge ${sCss(p.status)}">${p.status}</span></div>
+      <div class="detail-meta"><span class="status-badge ${sCss(p.status)}">${p.status}</span><button onclick="selectPart(${p.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:4px 6px;border-radius:4px;margin-left:4px" title="Schließen">✕</button></div>
     </div>
     <div class="time-flow">
       <div class="time-step"><div class="time-step-label">Angekündigt</div><div class="time-step-val ${p.ts_angek?'set':''}">${fmtTime(p.ts_angek)}</div></div>
@@ -508,8 +508,7 @@ function renderArchiv(){
   document.getElementById('badge-archiv').textContent=done.length;
   document.getElementById('stat-frei').textContent=done.filter(p=>p.status==='Freigegeben').length;
   document.getElementById('stat-rueck').textContent=done.filter(p=>p.status==='Rückgewiesen').length;
-  const durs=done.map(p=>durMin(p.ts_qs,p.ts_abg)).filter(d=>d!==null);
-  document.getElementById('stat-dauer').textContent=durs.length?durStr(Math.round(durs.reduce((a,b)=>a+b,0)/durs.length)):'–';
+  
   document.getElementById('archiv-tbody').innerHTML=done.map(p=>`<tr>
     <td><span class="prio-badge prio-${p.prio}">${p.prio}</span></td>
     <td class="mono" style="font-weight:600">${p.nr}</td><td>${p.bez}</td><td class="mono">${p.machine}</td>

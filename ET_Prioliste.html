@@ -335,55 +335,6 @@ td.mono{font-family:var(--mono);font-size:13px}
 </div>
 
 <!-- SCANNER SCREEN -->
-<div class="scanner-screen" id="scanner-screen">
-  <div class="scanner-header">
-    <span class="scanner-logo">ET Prioliste</span>
-    <span class="scanner-role">Scanner</span>
-    <span style="flex:1"></span>
-    <span style="font-size:12px;color:var(--text2)" id="scanner-user"></span>
-  </div>
-  <div class="scanner-body" style="margin-top:70px">
-    <div class="scanner-title">Bauteil scannen</div>
-    <div class="scanner-sub">Artikelnummer mit Barcode-Scanner oder manuell eingeben</div>
-    <div class="scanner-input-wrap">
-      <svg class="scanner-input-icon" width="22" height="22" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#9aa0b0" stroke-width="1.5"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#9aa0b0" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <input class="scanner-input" id="scanner-input" type="text" placeholder="z.B. 108180B" oninput="onScannerInput(this.value)" onkeydown="onScannerKey(event)" autocomplete="off" autofocus>
-    </div>
-
-    <!-- Mehrere Treffer -->
-    <div class="scanner-multi" id="scanner-multi">
-      <div style="font-size:13px;color:var(--text2);font-weight:500;margin-bottom:4px">Mehrere Teile gefunden – bitte auswählen:</div>
-    </div>
-
-    <!-- Einzelner Treffer -->
-    <div class="scanner-result" id="scanner-result">
-      <div class="scanner-result-header">
-        <div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="prio-badge" id="sc-prio-badge"></span>
-            <div>
-              <div class="scanner-result-nr" id="sc-nr"></div>
-              <div class="scanner-result-bez" id="sc-bez"></div>
-            </div>
-          </div>
-        </div>
-        <span class="status-badge" id="sc-status-badge" style="margin-left:auto"></span>
-      </div>
-      <div class="scanner-result-body">
-        <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);margin-bottom:4px">
-          <span>Maschine: <strong id="sc-machine" style="color:var(--text)"></strong></span>
-          <span>Bereich: <strong id="sc-bereich" style="color:var(--text)"></strong></span>
-        </div>
-        <div id="sc-action-area"></div>
-      </div>
-    </div>
-
-    <!-- Nicht gefunden -->
-    <div class="scanner-error" id="scanner-error">
-      <div class="scanner-error-text" id="scanner-error-text">Artikel nicht gefunden</div>
-      <button class="scanner-new-btn" id="scanner-new-btn" onclick="scannerCreateNew()">+ Neues Teil anlegen</button>
-    </div>
-  </div>
 </div>
 
 
@@ -495,7 +446,6 @@ async function loadRolle(){
 }
 function canAdmin(){return userRolle==='Admin';}
 function canQS(){return userRolle==='Admin'||userRolle==='QS';}
-function canFertigung(){return true;}
 
 async function loadParts(){
   try{
@@ -511,7 +461,8 @@ async function loadParts(){
       const savedStatus=localStorage.getItem('et_status');
       if(savedBereich&&savedBereich!=='alle'){
         currentFilter=savedBereich;
-        const btn=document.getElementById('chip-'+savedBereich.toLowerCase());
+        const bereichIdMap={'alle':'chip-alle','Drehen':'chip-drehen','Fräsen':'chip-fraesen'};
+        const btn=document.getElementById(bereichIdMap[savedBereich]||'chip-alle');
         if(btn){document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');}
       }
       if(savedStatus&&savedStatus!=='alle'){
@@ -553,16 +504,15 @@ function renderList(){
       if(showDoneFilter)return p.status===statusFilter;
       return !DONE.includes(p.status);
     })
-    .filter(baseFilter).filter(statusFlt)
+    .filter(baseFilter)
+    .filter(p=>!showDoneFilter?(statusFilter==='alle'||p.status===statusFilter):true)
     .filter(p=>matchSearch(p,searchQuery))
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
   const doneTodayParts=(currentFilter==='alle'&&statusFilter==='alle')?allParts
     .filter(p=>DONE.includes(p.status))
     .filter(p=>{const d=p.ts_abg?new Date(p.ts_abg).toDateString():null;return d===today;})
     .sort((a,b)=>(b.ts_abg||'')>(a.ts_abg||'')?1:-1):[];
-  const parts=[...openParts].filter(p=>{if(currentFilter==='Drehen')return p.bereich==='Drehen';if(currentFilter==='Fräsen')return p.bereich==='Fräsen';if(currentFilter==='p1')return p.prio==1;return true;}).filter(p=>{if(statusFilter!=='alle')return p.status===statusFilter;return true;}).sort((a,b)=>{ const rd=a.reihenfolge-b.reihenfolge; return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich); });
   document.getElementById('count-label').textContent=`${openParts.length} offen · ${doneTodayParts.length} heute fertig`;
-  const _today=new Date().toDateString();
   document.getElementById('badge-offen').textContent=allParts.filter(p=>{if(!DONE.includes(p.status))return true;const d=p.ts_abg?new Date(p.ts_abg).toDateString():null;return d===_today;}).length;
   const openRows=openParts.map(p=>`<tr draggable="${canAdmin()}" ondragstart="dragStart(event,${p.id})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,${p.id})" onclick="selectPart(${p.id})" class="${selectedId===p.id?'selected':''}" style="cursor:grab">
     <td><span class="prio-badge prio-${p.prio}">${p.prio}</span></td>
@@ -726,7 +676,7 @@ async function createPart(){
     const r=await createItem({[F.titel]:nr,[F.bez]:bez,[F.machine]:machine,[F.bereich]:bereich,[F.prio]:prio,[F.status]:'Angekündigt',[F.notiz]:notiz,[F.geplant]:geplantISO,[F.ts_angek]:now,[F.angelegtVon]:document.getElementById('user-name').textContent});
     allParts.unshift(mapPart(r.d));
     const _today2=new Date().toDateString();
-    document.getElementById('badge-offen').textContent=allParts.filter(x=>{if(!DONE.includes(x.status))return true;const d=x.ts_abg?new Date(x.ts_abg).toDateString():null;return d===_today2;}).length;
+    document.getElementById('badge-offen').textContent=allParts.filter(x=>{if(!DONE.includes(x.status))return true;const d=x.ts_abg?new Date(x.ts_abg).toDateString():null;return d===today;}).length;
     showToast(`${nr} angelegt`,'ok');closeModal();renderList();
   }catch(e){msg.className='form-msg err';msg.textContent='Fehler: '+e.message;}
 }
@@ -777,7 +727,8 @@ async function dropOn(e,targetId){
       if(showDoneFilter)return p.status===statusFilter;
       return !DONE.includes(p.status);
     })
-    .filter(baseFilter).filter(statusFlt)
+    .filter(baseFilter)
+    .filter(p=>!showDoneFilter?(statusFilter==='alle'||p.status===statusFilter):true)
     .filter(p=>matchSearch(p,searchQuery))
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
   const doneTodayParts=(currentFilter==='alle'&&statusFilter==='alle')?allParts
@@ -1014,6 +965,7 @@ function scannerCreateNew(){
 }
 
 setInterval(async()=>{
+  if(!msalInstance.getAllAccounts().length)return;
   try{
     const sel=Object.values(F).join(',');
     const d=await spFetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items?$select=${sel}&$top=500&$orderby=ID desc`);

@@ -129,7 +129,13 @@ td.mono{font-family:var(--mono);font-size:13px}
 .notiz-text{font-size:13px;color:var(--text2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rueck-section{margin-top:14px;padding:14px;background:var(--p1lt);border-radius:var(--radius);border:1px solid var(--p1);display:none}
 .rueck-section label{font-size:11px;color:var(--p1);display:block;margin-bottom:8px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px}
-.tr-drag-over{border-top:3px solid var(--accent)!important;background:var(--accentlt)!important} .rueck-section textarea{width:100%;background:#fff;border:1px solid var(--p1);border-radius:var(--radius);padding:9px;color:var(--text);font-family:var(--font);font-size:14px;resize:vertical;min-height:60px;outline:none}
+.tr-drag-over{border-top:3px solid var(--accent)!important;background:var(--accentlt)!important} .search-bar{display:flex;align-items:center;gap:10px;padding:10px 28px;background:#fff;border-bottom:1px solid var(--border)}
+.search-input{flex:1;max-width:340px;padding:8px 14px 8px 36px;border:1.5px solid var(--border2);border-radius:var(--radius);font-size:14px;font-family:var(--font);color:var(--text);outline:none;transition:border .15s;background:#fff}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,110,181,.1)}
+.search-wrap{position:relative;flex:1;max-width:340px}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;display:none}
+.rueck-section textarea{width:100%;background:#fff;border:1px solid var(--p1);border-radius:var(--radius);padding:9px;color:var(--text);font-family:var(--font);font-size:14px;resize:vertical;min-height:60px;outline:none}
 @media(max-width:700px){.main{padding:14px}.tabs{padding:0 14px}.header{padding:10px 14px}.form-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -184,7 +190,7 @@ td.mono{font-family:var(--mono);font-size:13px}
     <div id="list-container" style="display:none">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>P</th><th>Artikel-Nr</th><th>Bezeichnung</th><th>Maschine</th><th>Bereich</th><th>Status</th><th>Seit</th><th>Notiz</th></tr></thead>
+          <thead><tr><th>P</th><th>Artikel-Nr</th><th>Bezeichnung</th><th>Maschine</th><th>Bereich</th><th>Status</th><th>Ankunft</th><th>Seit</th><th>Notiz</th></tr></thead>
           <tbody id="parts-tbody"></tbody>
         </table>
       </div>
@@ -224,6 +230,8 @@ td.mono{font-family:var(--mono);font-size:13px}
       <div class="form-group"><label>Priorität *</label>
         <select id="f-prio"><option value="1">Prio 1</option><option value="2" selected>Prio 2</option><option value="3">Prio 3</option><option value="PZ">PZ</option><option value="WE">WE</option></select>
       </div>
+      <div class="form-group"></div>
+      <div class="form-group"><label>Geplante Ankunft</label><input type="time" id="f-geplant"></div>
       <div class="form-group"></div>
       <div class="form-group full"><label>Notiz (optional)</label><textarea id="f-notiz"></textarea></div>
     </div>
@@ -275,7 +283,7 @@ const F = {
   id:'ID',titel:'Title',bez:'Bauteilbezeichnung',machine:'Maschinennummer',
   bereich:'Fertigungsbereich',prio:'Priorit_x00e4_t',status:'Status',
   notiz:'Notiz',rueck:'R_x00fc_ckweisungsgrund',
-  reihenfolge:'Reihenfolge',ts_angek:'TS_Angek_x00fc_ndigt',ts_qs:'TS_Eingetroffen',
+  reihenfolge:'Reihenfolge',geplant:'Geplante_Ankunft',ts_angek:'TS_Angek_x00fc_ndigt',ts_qs:'TS_Eingetroffen',
   ts_haend:'TS_H_x00e4_ndische_Messung',ts_abg:'TS_Abgeschlossen'
 };
 const STATUS_FLOW={
@@ -305,7 +313,7 @@ function showApp(account){
   document.getElementById('app-screen').style.display='block';
   document.getElementById('user-name').textContent=account.name||account.username;
   document.getElementById('conn-dot').className='header-dot ok';
-  loadParts();
+  loadParts();document.getElementById('search-bar').style.display='flex';
 }
 async function getToken(){const accounts=msalInstance.getAllAccounts();const r=await msalInstance.acquireTokenSilent({scopes,account:accounts[0]});return r.accessToken;}
 async function spFetch(url,opts={}){
@@ -331,11 +339,15 @@ async function loadParts(){
 }
 async function updateItem(id,data){const digest=await getDigest();const listType=await getListItemType();await spFetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items(${id})`,{method:'POST',headers:{'Content-Type':'application/json;odata=verbose','X-RequestDigest':digest,'X-HTTP-Method':'MERGE','IF-MATCH':'*'},body:JSON.stringify({'__metadata':{'type':listType},...data})});}
 async function createItem(data){const digest=await getDigest();const listType=await getListItemType();return spFetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items`,{method:'POST',headers:{'Content-Type':'application/json;odata=verbose','X-RequestDigest':digest},body:JSON.stringify({'__metadata':{'type':listType},...data})});}
-function mapPart(r){return{id:r[F.id],nr:r[F.titel]||'',bez:r[F.bez]||'',machine:r[F.machine]||'',bereich:r[F.bereich]||'',prio:r[F.prio]||'3',status:r[F.status]||'Angekündigt',notiz:r[F.notiz]||'',rueck:r[F.rueck]||'',reihenfolge:r[F.reihenfolge]||100,ts_angek:r[F.ts_angek]||null,ts_qs:r[F.ts_qs]||null,ts_haend:r[F.ts_haend]||null,ts_abg:r[F.ts_abg]||null};}
+function mapPart(r){return{id:r[F.id],nr:r[F.titel]||'',bez:r[F.bez]||'',machine:r[F.machine]||'',bereich:r[F.bereich]||'',prio:r[F.prio]||'3',status:r[F.status]||'Angekündigt',notiz:r[F.notiz]||'',rueck:r[F.rueck]||'',reihenfolge:r[F.reihenfolge]||100,geplant:r[F.geplant]||null,ts_angek:r[F.ts_angek]||null,ts_qs:r[F.ts_qs]||null,ts_haend:r[F.ts_haend]||null,ts_abg:r[F.ts_abg]||null};}
 function prioScore(p,b){if(p=='PZ')return 90;if(p=='WE')return 85;if(p==1)return 100;if(p==2&&b==='Drehen')return 80;if(p==2&&b==='Fräsen')return 70;if(p==2)return 60;if(p==3&&b==='Drehen')return 40;if(p==3&&b==='Fräsen')return 35;return 30;}
 function fmtTime(iso){if(!iso)return'–';const d=new Date(iso);return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 function fmtDT(iso){if(!iso)return'–';const d=new Date(iso);return`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')} ${fmtTime(iso)}`;}
 function durMin(a,b){if(!a||!b)return null;return Math.round((new Date(b)-new Date(a))/60000);}
+function fmtGeplant(p){
+  if(!p.geplant)return'–';
+  return fmtTime(p.geplant);
+}
 function durStr(m){if(m===null)return'–';if(m<60)return`${m} min`;return`${Math.floor(m/60)}h ${m%60}m`;}
 function sCss(s){return STATUS_FLOW[s]?.css||'s-angek';}
 function bCss(b){if(b==='Drehen'||b==='Dreherei')return'b-drehen';if(b==='Fräsen'||b==='Fräserei')return'b-fraesen';return'';}
@@ -366,6 +378,7 @@ function renderList(){
     <td class="mono">${p.machine}</td>
     <td><span class="bereich-badge ${bCss(p.bereich)}">${p.bereich}</span></td>
     <td><span class="status-badge ${sCss(p.status)}">${p.status}</span></td>
+    <td class="mono" style="font-size:12px">${fmtGeplant(p)}</td>
     <td class="mono" style="color:var(--text2)">${fmtTime(p.ts_qs||p.ts_angek)}</td>
     <td><span class="notiz-text">${p.notiz}</span></td>
   </tr>`).join('');
@@ -380,6 +393,7 @@ function renderList(){
     <td class="mono">${p.machine}</td>
     <td><span class="bereich-badge ${bCss(p.bereich)}">${p.bereich}</span></td>
     <td><span class="status-badge ${sCss(p.status)}">${p.status}</span></td>
+    <td class="mono" style="font-size:12px">–</td>
     <td class="mono" style="color:var(--text2)">${fmtTime(p.ts_abg)}</td>
     <td><span class="notiz-text">${p.notiz}</span></td>
   </tr>`).join('');
@@ -401,6 +415,8 @@ function renderDetail(){
       <div class="detail-meta"><span class="status-badge ${sCss(p.status)}">${p.status}</span><button onclick="selectPart(${p.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:4px 6px;border-radius:4px;margin-left:4px" title="Schließen">✕</button></div>
     </div>
     <div class="time-flow">
+      <div class="time-step"><div class="time-step-label">Geplante Ankunft</div><div class="time-step-val ${p.geplant?'set':''}">${fmtTime(p.geplant)}</div></div>
+      <span class="time-arrow">›</span>
       <div class="time-step"><div class="time-step-label">Angekündigt</div><div class="time-step-val ${p.ts_angek?'set':''}">${fmtTime(p.ts_angek)}</div></div>
       <span class="time-arrow">›</span>
       <div class="time-step"><div class="time-step-label">Bauteil in QS</div><div class="time-step-val ${p.ts_qs?'set':''}">${fmtTime(p.ts_qs)}</div></div>
@@ -494,6 +510,14 @@ async function createPart(){
   if(!nr||!machine||!bereich){msg.className='form-msg err';msg.textContent='Artikelnummer, Maschinennummer und Fertigungsbereich sind Pflichtfelder.';return;}
   try{
     const now=new Date().toISOString();
+    const geplantVal=document.getElementById('f-geplant').value;
+    let geplantISO=null;
+    if(geplantVal){
+      const today=new Date();
+      const [h,m]=geplantVal.split(':');
+      today.setHours(parseInt(h),parseInt(m),0,0);
+      geplantISO=today.toISOString();
+    }
     const r=await createItem({[F.titel]:nr,[F.bez]:bez,[F.machine]:machine,[F.bereich]:bereich,[F.prio]:prio,[F.status]:'Angekündigt',[F.notiz]:notiz,[F.ts_angek]:p.ts_abg||now});
     allParts.unshift(mapPart(r.d));
     const _today=new Date().toDateString();
@@ -501,7 +525,7 @@ async function createPart(){
     showToast(`${nr} angelegt`,'ok');closeModal();renderList();
   }catch(e){msg.className='form-msg err';msg.textContent='Fehler: '+e.message;}
 }
-function clearForm(){['f-nr','f-bez','f-machine','f-notiz'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-bereich').value='';document.getElementById('f-prio').value='2';const m=document.getElementById('form-msg');m.className='form-msg';m.textContent='';}
+function clearForm(){['f-nr','f-bez','f-machine','f-notiz','f-geplant'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-bereich').value='';document.getElementById('f-prio').value='2';const m=document.getElementById('form-msg');m.className='form-msg';m.textContent='';}
 function renderArchiv(){
   const done=allParts.filter(p=>DONE.includes(p.status)).sort((a,b)=>(b.ts_abg||'')>(a.ts_abg||'')?1:-1);
   document.getElementById('badge-archiv').textContent=done.length;
@@ -581,6 +605,14 @@ async function erneutMessen(id){
   const notiz=`⚠ Rückweisung vom ${datum}${p.rueck?': '+p.rueck:''}`;
   try{
     const now=new Date().toISOString();
+    const geplantVal=document.getElementById('f-geplant').value;
+    let geplantISO=null;
+    if(geplantVal){
+      const today=new Date();
+      const [h,m]=geplantVal.split(':');
+      today.setHours(parseInt(h),parseInt(m),0,0);
+      geplantISO=today.toISOString();
+    }
     const r=await createItem({
       [F.titel]:p.nr,[F.bez]:p.bez,[F.machine]:p.machine,
       [F.bereich]:p.bereich,[F.prio]:p.prio,[F.status]:'Angekündigt',
@@ -592,6 +624,52 @@ async function erneutMessen(id){
     selectedId=null;
     renderList();
   }catch(e){showToast('Fehler: '+e.message,'err');}
+}
+
+
+let searchTimer=null;
+function onSearch(val){
+  document.getElementById('search-clear').style.display=val?'block':'none';
+  clearTimeout(searchTimer);
+  if(!val){document.getElementById('search-hint').textContent='';renderList();return;}
+  searchTimer=setTimeout(()=>{
+    const v=val.trim().toUpperCase();
+    const matches=allParts.filter(p=>p.nr.toUpperCase().includes(v));
+    if(matches.length===1){
+      // Auto-select single match
+      selectedId=matches[0].id;
+      showTab('offen');
+      renderList();
+      setTimeout(()=>document.getElementById('detail-container').scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+      document.getElementById('search-hint').textContent='✓ '+matches[0].nr+' – '+matches[0].bez;
+    } else if(matches.length>1){
+      document.getElementById('search-hint').textContent=matches.length+' Treffer';
+      // Filter list to matches
+      const tbody=document.getElementById('parts-tbody');
+      if(tbody){
+        Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{
+          const nrCell=tr.querySelector('td:nth-child(2)');
+          if(nrCell)tr.style.display=nrCell.textContent.toUpperCase().includes(v)?'':'none';
+        });
+      }
+    } else {
+      document.getElementById('search-hint').textContent='Nicht gefunden';
+    }
+  },300);
+}
+function onSearchKey(e){
+  if(e.key==='Escape')clearSearch();
+  if(e.key==='Enter'){
+    const v=e.target.value.trim().toUpperCase();
+    const match=allParts.find(p=>p.nr.toUpperCase()===v);
+    if(match){selectedId=match.id;showTab('offen');renderList();setTimeout(()=>document.getElementById('detail-container').scrollIntoView({behavior:'smooth',block:'nearest'}),100);}
+  }
+}
+function clearSearch(){
+  document.getElementById('search-input').value='';
+  document.getElementById('search-clear').style.display='none';
+  document.getElementById('search-hint').textContent='';
+  renderList();
 }
 
 init();

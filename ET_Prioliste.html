@@ -139,6 +139,38 @@ td.mono{font-family:var(--mono);font-size:13px}
 @media(max-width:700px){.main{padding:14px}.tabs{padding:0 14px}.header{padding:10px 14px}.form-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr}}
 
 #auth-overlay{position:fixed;inset:0;background:#f4f6f9;z-index:9999;display:flex;align-items:center;justify-content:center}
+
+.scanner-screen{display:none;position:fixed;inset:0;background:#f0f4f8;z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.scanner-screen.active{display:flex}
+.scanner-header{position:fixed;top:0;left:0;right:0;background:#fff;border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+.scanner-logo{font-size:16px;font-weight:600;color:var(--text)}
+.scanner-role{font-size:11px;font-family:var(--mono);background:var(--p3lt);color:var(--p3);padding:2px 10px;border-radius:20px;font-weight:600}
+.scanner-body{display:flex;flex-direction:column;align-items:center;gap:28px;width:100%;max-width:520px;padding:20px}
+.scanner-title{font-size:22px;font-weight:600;color:var(--text);text-align:center}
+.scanner-sub{font-size:14px;color:var(--text2);text-align:center;margin-top:-16px}
+.scanner-input-wrap{width:100%;position:relative}
+.scanner-input{width:100%;padding:16px 20px 16px 52px;border:2px solid var(--border2);border-radius:12px;font-size:20px;font-family:var(--mono);color:var(--text);outline:none;background:#fff;transition:border .15s;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.scanner-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(26,110,181,.1)}
+.scanner-input-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text3)}
+.scanner-result{width:100%;background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden;display:none}
+.scanner-result.show{display:block}
+.scanner-result-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.scanner-result-nr{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.scanner-result-bez{font-size:13px;color:var(--text2);margin-top:2px}
+.scanner-result-body{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.scanner-action-btn{width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:500;font-family:var(--font);cursor:pointer;border:none;transition:all .15s}
+.scanner-action-primary{background:var(--accent);color:#fff}
+.scanner-action-primary:hover{background:var(--accent2)}
+.scanner-action-haend{background:var(--p3lt);color:var(--p3);border:1.5px solid var(--p3)}
+.scanner-action-haend:hover{background:#d0eedd}
+.scanner-multi{width:100%;display:none;flex-direction:column;gap:8px}
+.scanner-multi.show{display:flex}
+.scanner-multi-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.scanner-multi-item:hover{border-color:var(--accent);background:var(--accentlt)}
+.scanner-error{width:100%;background:var(--p1lt);border:1px solid var(--p1);border-radius:12px;padding:16px 20px;text-align:center;display:none}
+.scanner-error.show{display:block}
+.scanner-error-text{color:var(--p1);font-size:14px;font-weight:500}
+.scanner-new-btn{margin-top:8px;background:none;border:1px solid var(--p1);color:var(--p1);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--font)}
 </style>
 </head>
 <body>
@@ -221,6 +253,59 @@ td.mono{font-family:var(--mono);font-size:13px}
   </div>
 </div>
 
+<!-- SCANNER SCREEN -->
+<div class="scanner-screen" id="scanner-screen">
+  <div class="scanner-header">
+    <span class="scanner-logo">ET Prioliste</span>
+    <span class="scanner-role">Scanner</span>
+    <span style="flex:1"></span>
+    <span style="font-size:12px;color:var(--text2)" id="scanner-user"></span>
+  </div>
+  <div class="scanner-body" style="margin-top:70px">
+    <div class="scanner-title">Bauteil scannen</div>
+    <div class="scanner-sub">Artikelnummer mit Barcode-Scanner oder manuell eingeben</div>
+    <div class="scanner-input-wrap">
+      <svg class="scanner-input-icon" width="22" height="22" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#9aa0b0" stroke-width="1.5"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#9aa0b0" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input class="scanner-input" id="scanner-input" type="text" placeholder="z.B. 108180B" oninput="onScannerInput(this.value)" onkeydown="onScannerKey(event)" autocomplete="off" autofocus>
+    </div>
+
+    <!-- Mehrere Treffer -->
+    <div class="scanner-multi" id="scanner-multi">
+      <div style="font-size:13px;color:var(--text2);font-weight:500;margin-bottom:4px">Mehrere Teile gefunden – bitte auswählen:</div>
+    </div>
+
+    <!-- Einzelner Treffer -->
+    <div class="scanner-result" id="scanner-result">
+      <div class="scanner-result-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="prio-badge" id="sc-prio-badge"></span>
+            <div>
+              <div class="scanner-result-nr" id="sc-nr"></div>
+              <div class="scanner-result-bez" id="sc-bez"></div>
+            </div>
+          </div>
+        </div>
+        <span class="status-badge" id="sc-status-badge" style="margin-left:auto"></span>
+      </div>
+      <div class="scanner-result-body">
+        <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);margin-bottom:4px">
+          <span>Maschine: <strong id="sc-machine" style="color:var(--text)"></strong></span>
+          <span>Bereich: <strong id="sc-bereich" style="color:var(--text)"></strong></span>
+        </div>
+        <div id="sc-action-area"></div>
+      </div>
+    </div>
+
+    <!-- Nicht gefunden -->
+    <div class="scanner-error" id="scanner-error">
+      <div class="scanner-error-text" id="scanner-error-text">Artikel nicht gefunden</div>
+      <button class="scanner-new-btn" id="scanner-new-btn" onclick="scannerCreateNew()">+ Neues Teil anlegen</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">✕</button>
@@ -247,6 +332,59 @@ td.mono{font-family:var(--mono);font-size:13px}
     <div class="form-msg" id="form-msg"></div>
   </div>
 </div>
+
+<!-- SCANNER SCREEN -->
+<div class="scanner-screen" id="scanner-screen">
+  <div class="scanner-header">
+    <span class="scanner-logo">ET Prioliste</span>
+    <span class="scanner-role">Scanner</span>
+    <span style="flex:1"></span>
+    <span style="font-size:12px;color:var(--text2)" id="scanner-user"></span>
+  </div>
+  <div class="scanner-body" style="margin-top:70px">
+    <div class="scanner-title">Bauteil scannen</div>
+    <div class="scanner-sub">Artikelnummer mit Barcode-Scanner oder manuell eingeben</div>
+    <div class="scanner-input-wrap">
+      <svg class="scanner-input-icon" width="22" height="22" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#9aa0b0" stroke-width="1.5"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#9aa0b0" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input class="scanner-input" id="scanner-input" type="text" placeholder="z.B. 108180B" oninput="onScannerInput(this.value)" onkeydown="onScannerKey(event)" autocomplete="off" autofocus>
+    </div>
+
+    <!-- Mehrere Treffer -->
+    <div class="scanner-multi" id="scanner-multi">
+      <div style="font-size:13px;color:var(--text2);font-weight:500;margin-bottom:4px">Mehrere Teile gefunden – bitte auswählen:</div>
+    </div>
+
+    <!-- Einzelner Treffer -->
+    <div class="scanner-result" id="scanner-result">
+      <div class="scanner-result-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="prio-badge" id="sc-prio-badge"></span>
+            <div>
+              <div class="scanner-result-nr" id="sc-nr"></div>
+              <div class="scanner-result-bez" id="sc-bez"></div>
+            </div>
+          </div>
+        </div>
+        <span class="status-badge" id="sc-status-badge" style="margin-left:auto"></span>
+      </div>
+      <div class="scanner-result-body">
+        <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);margin-bottom:4px">
+          <span>Maschine: <strong id="sc-machine" style="color:var(--text)"></strong></span>
+          <span>Bereich: <strong id="sc-bereich" style="color:var(--text)"></strong></span>
+        </div>
+        <div id="sc-action-area"></div>
+      </div>
+    </div>
+
+    <!-- Nicht gefunden -->
+    <div class="scanner-error" id="scanner-error">
+      <div class="scanner-error-text" id="scanner-error-text">Artikel nicht gefunden</div>
+      <button class="scanner-new-btn" id="scanner-new-btn" onclick="scannerCreateNew()">+ Neues Teil anlegen</button>
+    </div>
+  </div>
+</div>
+
 
 <div class="modal-overlay" id="prio-modal-overlay" onclick="closePrioModalOutside(event)">
   <div class="modal" style="max-width:380px">
@@ -318,7 +456,7 @@ function showApp(account){
   document.getElementById('user-name').textContent=account.name||account.username;
   document.getElementById('conn-dot').className='header-dot ok';
   userEmail=(account.username||'').toLowerCase();
-  loadParts();loadRolle();document.getElementById('search-bar').style.display='flex';
+  loadParts();loadRolle();
 }
 async function getToken(){const accounts=msalInstance.getAllAccounts();const r=await msalInstance.acquireTokenSilent({scopes,account:accounts[0]});return r.accessToken;}
 async function spFetch(url,opts={}){
@@ -343,8 +481,16 @@ async function loadRolle(){
     // Show role badge in header
     const badge=document.getElementById('rolle-badge');
     if(badge){badge.textContent=userRolle;badge.style.background=userRolle==='Admin'?'var(--p1lt)':userRolle==='QS'?'var(--p2lt)':'var(--p3lt)';badge.style.color=userRolle==='Admin'?'var(--p1)':userRolle==='QS'?'var(--p2)':'var(--p3)';}
+    if(userRolle==='Scanner'||new URLSearchParams(window.location.search).get('mode')==='scanner'){
+      initScanner();
+    } else {
+      document.getElementById('search-bar').style.display='flex';
+    }
     renderList();
-  }catch(e){console.warn('Rollen konnten nicht geladen werden',e);}
+  }catch(e){
+    console.warn('Rollen konnten nicht geladen werden',e);
+    document.getElementById('search-bar').style.display='flex';
+  }
 }
 function canAdmin(){return userRolle==='Admin';}
 function canQS(){return userRolle==='Admin'||userRolle==='QS';}
@@ -387,6 +533,7 @@ function renderList(){
   const openParts=allParts
     .filter(p=>!DONE.includes(p.status))
     .filter(baseFilter).filter(statusFlt)
+    .filter(p=>matchSearch(p,searchQuery))
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
   const doneTodayParts=(currentFilter==='alle'&&statusFilter==='alle')?allParts
     .filter(p=>DONE.includes(p.status))
@@ -593,6 +740,7 @@ async function dropOn(e,targetId){
   const openParts=allParts
     .filter(p=>!DONE.includes(p.status))
     .filter(baseFilter).filter(statusFlt)
+    .filter(p=>matchSearch(p,searchQuery))
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
   const doneTodayParts=(currentFilter==='alle'&&statusFilter==='alle')?allParts
     .filter(p=>DONE.includes(p.status))
@@ -652,34 +800,30 @@ async function erneutMessen(id){
 
 
 let searchTimer=null;
+let searchQuery='';
 function onSearch(val){
   document.getElementById('search-clear').style.display=val?'block':'none';
   clearTimeout(searchTimer);
+  searchQuery=val.trim().toUpperCase();
   if(!val){document.getElementById('search-hint').textContent='';renderList();return;}
   searchTimer=setTimeout(()=>{
-    const v=val.trim().toUpperCase();
-    const matches=allParts.filter(p=>p.nr.toUpperCase().includes(v));
-    if(matches.length===1){
-      // Auto-select single match
-      selectedId=matches[0].id;
-      showTab('offen');
-      renderList();
-      setTimeout(()=>document.getElementById('detail-container').scrollIntoView({behavior:'smooth',block:'nearest'}),100);
-      document.getElementById('search-hint').textContent='✓ '+matches[0].nr+' – '+matches[0].bez;
-    } else if(matches.length>1){
-      document.getElementById('search-hint').textContent=matches.length+' Treffer';
-      // Filter list to matches
-      const tbody=document.getElementById('parts-tbody');
-      if(tbody){
-        Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{
-          const nrCell=tr.querySelector('td:nth-child(2)');
-          if(nrCell)tr.style.display=nrCell.textContent.toUpperCase().includes(v)?'':'none';
-        });
-      }
-    } else {
+    renderList();
+    const v=searchQuery;
+    const matches=allParts.filter(p=>!DONE.includes(p.status)&&matchSearch(p,v));
+    if(matches.length===0){
       document.getElementById('search-hint').textContent='Nicht gefunden';
+    } else {
+      document.getElementById('search-hint').textContent=matches.length+' Treffer';
     }
-  },300);
+  },200);
+}
+function matchSearch(p,v){
+  if(!v)return true;
+  const nr=p.nr.toUpperCase();
+  const bez=p.bez.toUpperCase();
+  // Match with or without trailing B
+  const vBase=v.endsWith('B')?v.slice(0,-1):v;
+  return nr.includes(v)||nr.includes(vBase)||(v.endsWith('B')&&nr===vBase)||bez.includes(v);
 }
 function onSearchKey(e){
   if(e.key==='Escape')clearSearch();
@@ -694,6 +838,140 @@ function clearSearch(){
   document.getElementById('search-clear').style.display='none';
   document.getElementById('search-hint').textContent='';
   renderList();
+}
+
+
+let scannerTimer=null;
+let scannerCurrentPart=null;
+
+function initScanner(){
+  document.getElementById('scanner-screen').classList.add('active');
+  document.getElementById('scanner-user').textContent=document.getElementById('user-name').textContent;
+  setTimeout(()=>document.getElementById('scanner-input').focus(),100);
+}
+
+function onScannerInput(val){
+  clearTimeout(scannerTimer);
+  resetScannerResult();
+  if(!val.trim()){return;}
+  scannerTimer=setTimeout(()=>doScannerSearch(val.trim()),300);
+}
+
+function onScannerKey(e){
+  if(e.key==='Escape'){document.getElementById('scanner-input').value='';resetScannerResult();}
+  if(e.key==='Enter'){clearTimeout(scannerTimer);doScannerSearch(document.getElementById('scanner-input').value.trim());}
+}
+
+function doScannerSearch(val){
+  if(!val)return;
+  const v=val.toUpperCase();
+  const vBase=v.endsWith('B')?v.slice(0,-1):v;
+  
+  // Search in open parts only
+  const matches=allParts.filter(p=>!DONE.includes(p.status)).filter(p=>{
+    const nr=p.nr.toUpperCase();
+    return nr===v||nr===vBase||(v.endsWith('B')&&nr===vBase)||(!v.endsWith('B')&&nr===v+'B');
+  });
+
+  if(matches.length===0){
+    // Show error
+    document.getElementById('scanner-error-text').textContent='Artikel "'+val+'" nicht gefunden in der offenen Liste';
+    document.getElementById('scanner-error').classList.add('show');
+    document.getElementById('scanner-new-btn').setAttribute('data-nr', val);
+    return;
+  }
+
+  if(matches.length===1){
+    showScannerResult(matches[0]);
+    return;
+  }
+
+  // Multiple matches
+  const multi=document.getElementById('scanner-multi');
+  multi.innerHTML='<div style="font-size:13px;color:var(--text2);font-weight:500;margin-bottom:4px">Mehrere Teile gefunden – bitte auswählen:</div>';
+  matches.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='scanner-multi-item';
+    div.innerHTML=`<span class="prio-badge prio-${p.prio}">${p.prio}</span>
+      <div><div style="font-size:15px;font-weight:600;font-family:var(--mono)">${p.nr}</div>
+      <div style="font-size:12px;color:var(--text2)">${p.bez} · Maschine ${p.machine}</div></div>
+      <span class="status-badge ${sCss(p.status)}" style="margin-left:auto">${p.status}</span>`;
+    div.onclick=()=>{multi.classList.remove('show');showScannerResult(p);};
+    multi.appendChild(div);
+  });
+  multi.classList.add('show');
+}
+
+function showScannerResult(p){
+  scannerCurrentPart=p;
+  document.getElementById('sc-prio-badge').className='prio-badge prio-'+p.prio;
+  document.getElementById('sc-prio-badge').textContent=p.prio;
+  document.getElementById('sc-nr').textContent=p.nr;
+  document.getElementById('sc-bez').textContent=p.bez;
+  document.getElementById('sc-machine').textContent=p.machine;
+  document.getElementById('sc-bereich').textContent=p.bereich;
+  const sb=document.getElementById('sc-status-badge');
+  sb.className='status-badge '+sCss(p.status);
+  sb.textContent=p.status;
+
+  const area=document.getElementById('sc-action-area');
+  if(p.status==='Angekündigt'){
+    area.innerHTML=`<button class="scanner-action-btn scanner-action-primary" onclick="scannerAdvance('Bauteil in QS')">Bauteil in QS einbuchen →</button>`;
+  } else if(p.status==='Bauteil in QS'){
+    area.innerHTML=`<button class="scanner-action-btn scanner-action-haend" onclick="scannerAdvance('Händische Messung')">Händische Messung →</button>`;
+  } else {
+    area.innerHTML=`<div style="text-align:center;padding:10px;font-size:14px;color:var(--text2)">Status: <strong>${p.status}</strong> – keine Aktion möglich</div>`;
+  }
+  document.getElementById('scanner-result').classList.add('show');
+}
+
+async function scannerAdvance(newStatus){
+  const p=scannerCurrentPart;
+  if(!p)return;
+  const btn=document.querySelector('#sc-action-area button');
+  if(btn){btn.disabled=true;btn.textContent='Speichere...';}
+  
+  const now=new Date().toISOString();
+  const patch={[F.status]:newStatus};
+  if(newStatus==='Bauteil in QS')patch[F.ts_qs]=now;
+  if(newStatus==='Händische Messung')patch[F.ts_haend]=now;
+  
+  try{
+    await updateItem(p.id,patch);
+    p.status=newStatus;
+    if(patch[F.ts_qs])p.ts_qs=now;
+    if(patch[F.ts_haend])p.ts_haend=now;
+    
+    // Show success
+    const area=document.getElementById('sc-action-area');
+    area.innerHTML=`<div style="text-align:center;padding:12px;background:var(--p3lt);border-radius:8px;color:var(--p3);font-weight:600;font-size:15px">✓ ${newStatus} gesetzt</div>`;
+    
+    // Auto reset after 2 seconds
+    setTimeout(()=>{
+      document.getElementById('scanner-input').value='';
+      resetScannerResult();
+      document.getElementById('scanner-input').focus();
+    },2000);
+  }catch(e){
+    const area=document.getElementById('sc-action-area');
+    area.innerHTML=`<div style="text-align:center;padding:10px;background:var(--p1lt);border-radius:8px;color:var(--p1)">Fehler: ${e.message}</div>`;
+  }
+}
+
+function resetScannerResult(){
+  document.getElementById('scanner-result').classList.remove('show');
+  document.getElementById('scanner-error').classList.remove('show');
+  document.getElementById('scanner-multi').classList.remove('show');
+  scannerCurrentPart=null;
+}
+
+function scannerCreateNew(){
+  const nr=document.getElementById('scanner-new-btn').getAttribute('data-nr')||'';
+  document.getElementById('f-nr').value=nr;
+  // Switch to main app and open modal
+  document.getElementById('scanner-screen').classList.remove('active');
+  showTab('offen');
+  openModal();
 }
 
 init();

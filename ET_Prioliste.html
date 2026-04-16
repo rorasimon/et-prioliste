@@ -146,7 +146,7 @@ td.mono{font-family:var(--mono);font-size:13px}
   <span class="header-title">ET Prioliste</span>
   <span class="header-sep"></span>
   <span class="header-user" id="user-name"></span>
-  <div class="header-dot" id="conn-dot"></div>
+  <span id="rolle-badge" style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:var(--p3lt);color:var(--p3);font-family:var(--mono)">Fertigung</span><div class="header-dot" id="conn-dot"></div>
 </div>
 
 <div id="login-screen" class="login-screen">
@@ -283,7 +283,7 @@ const F = {
   id:'ID',titel:'Title',bez:'Bauteilbezeichnung',machine:'Maschinennummer',
   bereich:'Fertigungsbereich',prio:'Priorit_x00e4_t',status:'Status',
   notiz:'Notiz',rueck:'R_x00fc_ckweisungsgrund',
-  reihenfolge:'Reihenfolge',geplant:'Geplante_Ankunft',ts_angek:'TS_Angek_x00fc_ndigt',ts_qs:'TS_Eingetroffen',
+  reihenfolge:'Reihenfolge',geplant:'GeplanteAnkunftszeit',ts_angek:'TS_Angek_x00fc_ndigt',ts_qs:'TS_Eingetroffen',
   ts_haend:'TS_H_x00e4_ndische_Messung',ts_abg:'TS_Abgeschlossen'
 };
 const STATUS_FLOW={
@@ -296,7 +296,7 @@ const DONE=['Freigegeben','Rückgewiesen'];
 const msalConfig={auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:window.location.href.split('?')[0]},cache:{cacheLocation:'sessionStorage'}};
 const msalInstance=new msal.PublicClientApplication(msalConfig);
 const scopes=['https://roraaviation.sharepoint.com/AllSites.Write'];
-let allParts=[],currentFilter='alle',statusFilter='alle',selectedId=null,_listType=null;
+let allParts=[],currentFilter='alle',statusFilter='alle',selectedId=null,_listType=null,userRolle='Fertigung',userEmail='';
 
 async function init(){
   await msalInstance.initialize();
@@ -313,7 +313,8 @@ function showApp(account){
   document.getElementById('app-screen').style.display='block';
   document.getElementById('user-name').textContent=account.name||account.username;
   document.getElementById('conn-dot').className='header-dot ok';
-  loadParts();document.getElementById('search-bar').style.display='flex';
+  userEmail=(account.username||'').toLowerCase();
+  loadParts();loadRolle();document.getElementById('search-bar').style.display='flex';
 }
 async function getToken(){const accounts=msalInstance.getAllAccounts();const r=await msalInstance.acquireTokenSilent({scopes,account:accounts[0]});return r.accessToken;}
 async function spFetch(url,opts={}){
@@ -326,6 +327,25 @@ async function spFetch(url,opts={}){
 }
 async function getDigest(){const d=await spFetch(`${SITE_URL}/_api/contextinfo`,{method:'POST',headers:{'Content-Type':'application/json'}});return d.d.GetContextWebInformation.FormDigestValue;}
 async function getListItemType(){if(_listType)return _listType;const d=await spFetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')?$select=ListItemEntityTypeFullName`);_listType=d.d.ListItemEntityTypeFullName;return _listType;}
+
+async function loadRolle(){
+  try{
+    const enc=encodeURIComponent("ET_Rollen");
+    const url=`${SITE_URL}/_api/web/lists/getbytitle('${enc}')/items?$select=Title,Rolle&$top=200`;
+    const d=await spFetch(url);
+    const entries=d.d.results;
+    const me=entries.find(e=>(e.Title||'').toLowerCase()===userEmail);
+    if(me&&me.Rolle)userRolle=me.Rolle;
+    // Show role badge in header
+    const badge=document.getElementById('rolle-badge');
+    if(badge){badge.textContent=userRolle;badge.style.background=userRolle==='Admin'?'var(--p1lt)':userRolle==='QS'?'var(--p2lt)':'var(--p3lt)';badge.style.color=userRolle==='Admin'?'var(--p1)':userRolle==='QS'?'var(--p2)':'var(--p3)';}
+    renderList();
+  }catch(e){console.warn('Rollen konnten nicht geladen werden',e);}
+}
+function canAdmin(){return userRolle==='Admin';}
+function canQS(){return userRolle==='Admin'||userRolle==='QS';}
+function canFertigung(){return true;}
+
 async function loadParts(){
   try{
     const sel=Object.values(F).join(',');
@@ -372,7 +392,7 @@ function renderList(){
   document.getElementById('count-label').textContent=`${openParts.length} offen · ${doneTodayParts.length} heute fertig`;
   const _today=new Date().toDateString();
   document.getElementById('badge-offen').textContent=allParts.filter(p=>{if(!DONE.includes(p.status))return true;const d=p.ts_abg?new Date(p.ts_abg).toDateString():null;return d===_today;}).length;
-  const openRows=openParts.map(p=>`<tr draggable="true" ondragstart="dragStart(event,${p.id})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,${p.id})" onclick="selectPart(${p.id})" class="${selectedId===p.id?'selected':''}" style="cursor:grab">
+  const openRows=openParts.map(p=>`<tr draggable="${canAdmin()}" ondragstart="dragStart(event,${p.id})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,${p.id})" onclick="selectPart(${p.id})" class="${selectedId===p.id?'selected':''}" style="cursor:grab">
     <td><span class="prio-badge prio-${p.prio}">${p.prio}</span></td>
     <td class="mono" style="font-weight:600">${p.nr}</td><td>${p.bez}</td>
     <td class="mono">${p.machine}</td>
@@ -436,7 +456,7 @@ function renderDetail(){
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text3);min-width:90px">Nächster Status:</span>
         ${next.filter(s=>s!=='Freigegeben'&&s!=='Rückgewiesen').map(s=>`<button class="btn btn-primary" onclick="advanceStatus(${p.id},'${s}')">${s} →</button>`).join('')}
-        <button class="btn btn-sm" onclick="editPrio(${p.id})" style="margin-left:auto">Prio ändern</button>
+        ${canAdmin()?`<button class="btn btn-sm" onclick="editPrio(${p.id})" style="margin-left:auto">Prio ändern</button>`:''}
       </div>
       ${next.some(s=>s==='Freigegeben'||s==='Rückgewiesen')?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:10px;border-top:1px dashed var(--border)">
         <span style="font-size:12px;color:var(--text3);min-width:90px">Abschluss:</span>
@@ -551,7 +571,7 @@ let toastTimer;
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
 
 let dragId=null;
-function dragStart(e,id){dragId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>{const el=e.target.closest('tr');if(el)el.style.opacity='0.4';},0);}
+function dragStart(e,id){if(!canAdmin()){e.preventDefault();return;}dragId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>{const el=e.target.closest('tr');if(el)el.style.opacity='0.4';},0);}
 function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';const tr=e.target.closest('tr');if(tr)tr.classList.add('tr-drag-over');}
 function dragLeave(e){const tr=e.target.closest('tr');if(tr)tr.classList.remove('tr-drag-over');}
 async function dropOn(e,targetId){

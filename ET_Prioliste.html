@@ -352,11 +352,10 @@ function renderList(){
     .filter(p=>!DONE.includes(p.status))
     .filter(baseFilter).filter(statusFlt)
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
-  const doneTodayParts=allParts
+  const doneTodayParts=(currentFilter==='alle'&&statusFilter==='alle')?allParts
     .filter(p=>DONE.includes(p.status))
     .filter(p=>{const d=p.ts_abg?new Date(p.ts_abg).toDateString():null;return d===today;})
-    .filter(baseFilter)
-    .sort((a,b)=>(b.ts_abg||'')>(a.ts_abg||'')?1:-1);
+    .sort((a,b)=>(b.ts_abg||'')>(a.ts_abg||'')?1:-1):[];
   const parts=[...openParts].filter(p=>{if(currentFilter==='Drehen')return p.bereich==='Drehen';if(currentFilter==='Fräsen')return p.bereich==='Fräsen';if(currentFilter==='p1')return p.prio==1;return true;}).filter(p=>{if(statusFilter!=='alle')return p.status===statusFilter;return true;}).sort((a,b)=>{ const rd=a.reihenfolge-b.reihenfolge; return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich); });
   document.getElementById('count-label').textContent=`${openParts.length} offen · ${doneTodayParts.length} heute fertig`;
   const _today=new Date().toDateString();
@@ -547,11 +546,10 @@ async function dropOn(e,targetId){
     .filter(p=>!DONE.includes(p.status))
     .filter(baseFilter).filter(statusFlt)
     .sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
-  const doneTodayParts=allParts
+  const doneTodayParts=(currentFilter==='alle'&&statusFilter==='alle')?allParts
     .filter(p=>DONE.includes(p.status))
     .filter(p=>{const d=p.ts_abg?new Date(p.ts_abg).toDateString():null;return d===today;})
-    .filter(baseFilter)
-    .sort((a,b)=>(b.ts_abg||'')>(a.ts_abg||'')?1:-1);
+    .sort((a,b)=>(b.ts_abg||'')>(a.ts_abg||'')?1:-1):[];
   const parts=[...openParts].sort((a,b)=>{const rd=a.reihenfolge-b.reihenfolge;return rd!==0?rd:prioScore(b.prio,b.bereich)-prioScore(a.prio,a.bereich);});
   const fromIdx=parts.findIndex(p=>p.id===dragId);
   const toIdx=parts.findIndex(p=>p.id===targetId);

@@ -495,7 +495,7 @@ async function createPart(){
   if(!nr||!machine||!bereich){msg.className='form-msg err';msg.textContent='Artikelnummer, Maschinennummer und Fertigungsbereich sind Pflichtfelder.';return;}
   try{
     const now=new Date().toISOString();
-    const r=await createItem({[F.titel]:nr,[F.bez]:bez,[F.machine]:machine,[F.bereich]:bereich,[F.prio]:prio,[F.status]:'Angekündigt',[F.notiz]:notiz,[F.ts_angek]:now});
+    const r=await createItem({[F.titel]:nr,[F.bez]:bez,[F.machine]:machine,[F.bereich]:bereich,[F.prio]:prio,[F.status]:'Angekündigt',[F.notiz]:notiz,[F.ts_angek]:p.ts_abg||now});
     allParts.unshift(mapPart(r.d));
     const _today=new Date().toDateString();
   document.getElementById('badge-offen').textContent=allParts.filter(p=>{if(!DONE.includes(p.status))return true;const d=p.ts_abg?new Date(p.ts_abg).toDateString():null;return d===_today;}).length;
@@ -587,7 +587,7 @@ async function erneutMessen(id){
     const r=await createItem({
       [F.titel]:p.nr,[F.bez]:p.bez,[F.machine]:p.machine,
       [F.bereich]:p.bereich,[F.prio]:p.prio,[F.status]:'Angekündigt',
-      [F.notiz]:notiz,[F.ts_angek]:now
+      [F.notiz]:notiz,[F.ts_angek]:p.ts_abg||now
     });
     allParts.unshift(mapPart(r.d));
     document.getElementById('badge-offen').textContent=allParts.filter(x=>!DONE.includes(x.status)).length;

@@ -309,7 +309,7 @@ async function init(){
 function showLogin(){const ov=document.getElementById('auth-overlay');if(ov)ov.style.display='flex';}
 async function login(){try{const r=await msalInstance.loginPopup({scopes});showApp(r.account);}catch(e){}}
 function showApp(account){
-  const ov=document.getElementById('auth-overlay');if(ov)ov.style.display='none';
+  const ov=document.getElementById('auth-overlay');if(ov)ov.style.display='none';document.getElementById('app-screen').style.display='block';document.getElementById('app-screen').style.visibility='visible';
   document.getElementById('user-name').textContent=account.name||account.username;
   document.getElementById('conn-dot').className='header-dot ok';
   userEmail=(account.username||'').toLowerCase();

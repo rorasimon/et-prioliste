@@ -1161,7 +1161,7 @@ function renderMonitoring(){
   const machineCards=cmmStatus.length===0
     ?'<div style="color:var(--text3);font-size:13px;padding:12px 0">Keine Maschinendaten – SharePoint-Liste "CMM-Status" prüfen.</div>'
     :cmmStatus.map(m=>{
-      const lastMs=m.lastSignal?new Date(m.lastSignal).getTime():0;
+      const lastMs=m.lastSignal?new Date(m.lastSignal.endsWith('Z')?m.lastSignal:m.lastSignal+'Z').getTime():0;
       const minAgo=Math.floor((now-lastMs)/60000);
       const isDown=minAgo>=5;
       const isAlert=isDown&&minAgo>=15&&qsNow>0;

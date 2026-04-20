@@ -188,8 +188,7 @@ td.mono{font-family:var(--mono);font-size:13px}
 
 <div id="app-screen">
   <div class="tabs">
-    <button class="tab active" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
-    <button class="tab" onclick="showTab('offen')" id="tab-offen">Offen <span class="tab-badge" id="badge-offen">–</span></button>
+    <button class="tab active" onclick="showTab('offen')" id="tab-offen">Offen <span class="tab-badge" id="badge-offen">–</span></button>
     <button class="tab" onclick="showTab('archiv')" id="tab-archiv">Archiv <span class="tab-badge" id="badge-archiv">–</span></button>
     <button class="tab" onclick="showTab('monitoring')" id="tab-monitoring" style="display:none">CMM Monitoring <span class="tab-badge" id="badge-monitoring">–</span></button>
   </div>
@@ -203,11 +202,7 @@ td.mono{font-family:var(--mono);font-size:13px}
     <span style="font-size:12px;color:var(--text3)" id="search-hint"></span>
   </div>
 
-  <div class="main screen active" id="screen-dashboard">
-    <div id="dashboard-content"></div>
-  </div>
-
-  <div class="main screen" id="screen-offen">
+  <div class="main screen active" id="screen-offen">
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span class="filter-label" style="min-width:70px">Bereich:</span>
@@ -232,6 +227,7 @@ td.mono{font-family:var(--mono);font-size:13px}
     </div>
     <div id="list-loading" class="loading"><div class="spinner"></div>Lade ET Prioliste...</div>
     <div id="list-container" style="display:none">
+      <div id="status-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th style="width:36px;text-align:center">#</th><th>P</th><th>Artikel-Nr</th><th>Bezeichnung</th><th>Maschine</th><th>Bereich</th><th>Status</th><th>Geplante Ankunft</th><th>Seit</th><th>Notiz</th></tr></thead>
@@ -612,7 +608,8 @@ function renderList(){
   </tr>`).join('');
   document.getElementById('parts-tbody').innerHTML=openRows+separatorRow+doneRows;
   renderDetail();
-  if(document.getElementById('screen-dashboard').classList.contains('active'))renderDashboard();
+  renderStatusSummary();
+  if(document.getElementById('screen-dashboard')?.classList.contains('active'))renderDashboard();
 }
 
 function renderDetail(){
@@ -820,6 +817,21 @@ function renderArchiv(){
   document.getElementById('archiv-loading').style.display='none';
   document.getElementById('archiv-container').style.display='block';
 }
+function renderStatusSummary(){
+  const el=document.getElementById('status-summary');
+  if(!el)return;
+  const angek=allParts.filter(p=>p.status==='Angekündigt').length;
+  const qs=allParts.filter(p=>p.status==='Bauteil in QS').length;
+  const haend=allParts.filter(p=>p.status==='Händische Messung').length;
+  const chip=(label,val,col,bg,border)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 16px;background:${bg};border:1px solid ${border};border-radius:20px;font-size:13px;font-weight:500;color:${col}">
+    <span>${label}</span><span style="font-family:var(--mono);font-weight:700;font-size:15px">${val}</span>
+  </div>`;
+  el.innerHTML=
+    chip('Angekündigt',angek,'var(--text2)','#fff','var(--border)')+
+    chip('In QS',qs,'var(--accent)','var(--accentlt)','var(--accent)')+
+    chip('Händische Messung',haend,'#4a60b0','#f0f4ff','#c0ccee');
+}
+
 function showTab(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -828,7 +840,6 @@ function showTab(id){
   document.getElementById('search-bar').style.display=(id==='offen')?'flex':'none';
   if(id==='archiv')renderArchiv();
   if(id==='monitoring')loadMonitoringData();
-  if(id==='dashboard')renderDashboard();
 }
 
 function renderDashboard(){
